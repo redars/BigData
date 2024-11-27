@@ -1,0 +1,42 @@
+import pandas as pd
+import json
+import numpy as np
+import re
+
+df = pd.read_csv('swiggy.csv')
+
+def extract_number(s):
+    match = re.search(r'\d+', s)
+    if match:
+        return int(match.group())
+    else:
+        return 0
+
+def map_function(df):
+    results = []
+    for _, row in df.iterrows():
+        try:
+            if "Chinese" in row["cuisine"] and row["rating_count"] > 1:
+                rating = float(row["rating"]) if row["rating"] != "--" else 0.0
+                cost = float(row["cost"].replace("₹", "").strip()) if not pd.isna(row["cost"]) else 100000000
+                results.append((row["name"], rating, cost))
+        except (ValueError, KeyError):
+            continue
+    return results
+
+def reduce_function(mapped_data):
+    best_restaurant = None
+    for name, rating, cost in mapped_data:
+        if best_restaurant is None or (rating > best_restaurant[1] or (rating == best_restaurant[1] and cost < best_restaurant[2])):
+            best_restaurant = (name, rating, cost)
+    return best_restaurant
+
+df = df.fillna(" ")
+df['rating_count'] = df['rating_count'].apply(extract_number)
+mapped_data = map_function(df)
+best_restaurant = reduce_function(mapped_data)
+
+if best_restaurant:
+    print(f"Самый дешевый китайский ресторан с наилучшим рейтингом: {best_restaurant[0]} с рейтингом {best_restaurant[1]} и стоимостью {best_restaurant[2]}")
+else:
+    print("Нет подходящих ресторанов.")
